@@ -18,15 +18,14 @@ class BakingViewModel : ViewModel() {
     val uiState: StateFlow<UiState> =
         _uiState.asStateFlow()
 
-    private val generativeModel = Firebase.ai.generativeModel(
-        modelName = "gemini-flash-latest",
-    )
-
     fun sendPrompt(bitmap: Bitmap, prompt: String) {
         _uiState.value = UiState.Loading
 
         viewModelScope.launch(Dispatchers.IO) {
             try {
+                val generativeModel = Firebase.ai.generativeModel(
+                    modelName = "gemini-flash-latest",
+                )
                 val response = generativeModel.generateContent(
                     content {
                         image(bitmap)
@@ -37,7 +36,9 @@ class BakingViewModel : ViewModel() {
                     _uiState.value = UiState.Success(outputContent)
                 }
             } catch (e: Exception) {
-                _uiState.value = UiState.Error(e.localizedMessage ?: "")
+                _uiState.value = UiState.Error(
+                    e.localizedMessage ?: "Erro ao inicializar ou conectar com o Firebase. Verifique se o arquivo google-services.json foi adicionado."
+                )
             }
         }
     }
