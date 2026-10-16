@@ -13,3 +13,5 @@
 .externalNativeBuild
 .cxx
 local.properties
+/gradle/google-services.json
+google-services.json
