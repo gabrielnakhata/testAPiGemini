@@ -26,18 +26,22 @@ class BakingViewModel : ViewModel() {
                 val generativeModel = Firebase.ai.generativeModel(
                     modelName = "gemini-flash-latest",
                 )
-                val response = generativeModel.generateContent(
+
+                var outputText = ""
+                // Usamos generateContentStream em vez de generateContent, Com o streaming,
+                // à medida que o Gemini vai gerando cada palavra, ele já envia..
+                generativeModel.generateContentStream(
                     content {
                         image(bitmap)
                         text(prompt)
                     }
-                )
-                response.text?.let { outputContent ->
-                    _uiState.value = UiState.Success(outputContent)
+                ).collect { chunk ->
+                    outputText += chunk.text ?: ""
+                    _uiState.value = UiState.Success(outputText)
                 }
             } catch (e: Exception) {
                 _uiState.value = UiState.Error(
-                    e.localizedMessage ?: "Erro ao inicializar ou conectar com o Firebase. Verifique se o arquivo google-services.json foi adicionado."
+                    e.localizedMessage ?: "Erro ao gerar resposta."
                 )
             }
         }
