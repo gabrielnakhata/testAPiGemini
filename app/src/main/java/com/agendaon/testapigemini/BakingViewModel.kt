@@ -18,7 +18,7 @@ class BakingViewModel : ViewModel() {
     val uiState: StateFlow<UiState> =
         _uiState.asStateFlow()
 
-    fun sendPrompt(bitmap: Bitmap, prompt: String) {
+    fun sendPrompt(bitmap: Bitmap?, prompt: String) {
         _uiState.value = UiState.Loading
 
         viewModelScope.launch(Dispatchers.IO) {
@@ -27,15 +27,15 @@ class BakingViewModel : ViewModel() {
                     modelName = "gemini-flash-latest",
                 )
 
-                var outputText = ""
-                // Usamos generateContentStream em vez de generateContent, Com o streaming,
-                // à medida que o Gemini vai gerando cada palavra, ele já envia..
-                generativeModel.generateContentStream(
-                    content {
-                        image(bitmap)
-                        text(prompt)
+                val contentPayload = content {
+                    bitmap?.let {
+                        image(it.scaleDown(768))
                     }
-                ).collect { chunk ->
+                    text(prompt)
+                }
+
+                var outputText = ""
+                generativeModel.generateContentStream(contentPayload).collect { chunk ->
                     outputText += chunk.text ?: ""
                     _uiState.value = UiState.Success(outputText)
                 }
@@ -45,5 +45,16 @@ class BakingViewModel : ViewModel() {
                 )
             }
         }
+    }
+
+    private fun Bitmap.scaleDown(maxDimension: Int = 768): Bitmap {
+        val ratio = Math.min(
+            maxDimension.toFloat() / width,
+            maxDimension.toFloat() / height
+        )
+        if (ratio >= 1.0f) return this
+        val newWidth = Math.round(ratio * width)
+        val newHeight = Math.round(ratio * height)
+        return Bitmap.createScaledBitmap(this, newWidth, newHeight, true)
     }
 }

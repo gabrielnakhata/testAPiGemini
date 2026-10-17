@@ -17,6 +17,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -24,7 +25,6 @@ import androidx.compose.material3.TextField
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -57,7 +57,7 @@ val imageDescriptions = arrayOf(
 fun BakingScreen(
     bakingViewModel: BakingViewModel = viewModel()
 ) {
-    val selectedImage = remember { mutableIntStateOf(0) }
+    var selectedImage by remember { mutableStateOf<Int?>(0) }
     val placeholderPrompt = stringResource(R.string.prompt_placeholder)
     val placeholderResult = stringResource(R.string.results_placeholder)
     var prompt by rememberSaveable { mutableStateOf(placeholderPrompt) }
@@ -83,9 +83,9 @@ fun BakingScreen(
                         .padding(start = 8.dp, end = 8.dp)
                         .requiredSize(200.dp)
                         .clickable {
-                            selectedImage.intValue = index
+                            selectedImage = if (selectedImage == index) null else index
                         }
-                    if (index == selectedImage.intValue) {
+                    if (index == selectedImage) {
                         imageModifier =
                             imageModifier.border(
                                 BorderStroke(
@@ -117,10 +117,9 @@ fun BakingScreen(
 
                 Button(
                     onClick = {
-                        val bitmap = BitmapFactory.decodeResource(
-                            resources,
-                            images[selectedImage.intValue]
-                        )
+                        val bitmap = selectedImage?.let { index ->
+                            BitmapFactory.decodeResource(resources, images[index])
+                        }
                         bakingViewModel.sendPrompt(bitmap, prompt)
                     },
                     enabled = prompt.isNotEmpty(),
@@ -131,29 +130,33 @@ fun BakingScreen(
                 }
             }
 
+            var textColor = MaterialTheme.colorScheme.onSurface
+
             if (uiState is UiState.Loading) {
-                CircularProgressIndicator(modifier = Modifier.align(Alignment.CenterHorizontally))
-            } else {
-                var textColor = MaterialTheme.colorScheme.onSurface
-                if (uiState is UiState.Error) {
-                    textColor = MaterialTheme.colorScheme.error
-                    result = (uiState as UiState.Error).errorMessage
-                } else if (uiState is UiState.Success) {
-                    textColor = MaterialTheme.colorScheme.onSurface
-                    result = (uiState as UiState.Success).outputText
-                }
-                val scrollState = rememberScrollState()
-                Text(
-                    text = result,
-                    textAlign = TextAlign.Start,
-                    color = textColor,
+                LinearProgressIndicator(
                     modifier = Modifier
-                        .align(Alignment.CenterHorizontally)
-                        .padding(16.dp)
-                        .fillMaxSize()
-                        .verticalScroll(scrollState)
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 4.dp)
                 )
+            } else if (uiState is UiState.Error) {
+                textColor = MaterialTheme.colorScheme.error
+                result = (uiState as UiState.Error).errorMessage
+            } else if (uiState is UiState.Success) {
+                textColor = MaterialTheme.colorScheme.onSurface
+                result = (uiState as UiState.Success).outputText
             }
+
+            val scrollState = rememberScrollState()
+            Text(
+                text = result,
+                textAlign = TextAlign.Start,
+                color = textColor,
+                modifier = Modifier
+                    .align(Alignment.CenterHorizontally)
+                    .padding(16.dp)
+                    .fillMaxSize()
+                    .verticalScroll(scrollState)
+            )
         }
     }
 }
